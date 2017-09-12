@@ -163,10 +163,11 @@ class DuskCommand extends Command
     {
         copy(base_path('.env'), base_path('.env.backup'));
 
-        copy(base_path($this->duskFile()), base_path('.env'));
-
         $base = file_get_contents(base_path('.env.backup'));
-        file_put_contents(base_path('.env'), "\n" . $base, FILE_APPEND);
+        $dusk = file_get_contents(base_path($this->duskFile()));
+        
+        // replace the .env file with contents of both, starting with base .env
+        file_put_contents(base_path('.env'), $base.PHP_EOL.$dusk);
     }
 
     /**
@@ -188,7 +189,20 @@ class DuskCommand extends Command
      */
     protected function refreshEnvironment()
     {
+        // Load all values from dotenv, with the latter taking precedence 
+        // in the case of a duplicate key
         (new Dotenv(base_path()))->overload();
+
+        // Now set the env to a format like:
+        //     dusk .env file
+        //      base .env
+        // This way the framework's usual  dotenv->load() method will pick up
+        // the dusk values first
+        if (file_exists(base_path($this->duskFile()))) {
+            copy(base_path($this->duskFile()), base_path('.env'));
+            $base = file_get_contents(base_path('.env.backup'));
+            file_put_contents(base_path('.env'), PHP_EOL.$base, FILE_APPEND);
+        }
     }
 
     /**
